@@ -17,3 +17,6 @@ So far, the tensors are all stored in COO format, since COO format support the m
 ## Future Plan
 
 * [ ]  optimize the code to support CSR representation
+* [ ]  support for Conv Layers
+* [ ]  support for dense forward in Linear Layers
+* [ ]  test cases and debug
