@@ -21,7 +21,7 @@ class SparseForwardSparseBackward(torch.autograd.Function):
         inputs = inputs.to_dense()  # transform the format into dense since torch.sparse only support sparse * dense
         grad_w = torch.sum(
             torch.stack([torch.mm(grad_output.t(), input).t() for grad_output, input in zip(grad_outputs, inputs)],
-                        dim=0)
+                        dim=0), dim =0
         )  # a dense matrix
         grad_b = torch.sum(grad_outputs, dim=(0, 1))  # sparse matrix
         grad_inputs = torch.stack([torch.mm(grad_output, weight.t()) for grad_output in grad_outputs])

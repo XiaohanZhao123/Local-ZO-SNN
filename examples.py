@@ -4,14 +4,9 @@ from torch import nn
 from sparse_snn.SparseLinear import SparseDense
 from sparse_snn.SparseZO import LocalLIF
 from sparse_snn.SparseLinear.try_sparse_grad import set_elements_to_zero
+from sparse_snn.SparseZO.samplers import RandomSampler
 
-
-class RandomSampler:
-    def __init__(self):
-        pass
-
-    def __call__(self, sample_number: int, input_size: torch.Size, device):
-        return torch.randn((sample_number,) + input_size).to(device)
+from torch.optim import Adam
 
 # example for construct multi-layer SNN
 class MultiLayerSNN(nn.Module):
@@ -24,8 +19,6 @@ class MultiLayerSNN(nn.Module):
         self.snn2 = LocalLIF(0.5, 0.1, 0.1, 5, RandomSampler())
         self.fc3 = SparseDense(16, 10)
 
-
-
     def forward(self, inputs):
         inputs = self.fc1(inputs)
         inputs = self.snn1(inputs)
@@ -37,11 +30,16 @@ class MultiLayerSNN(nn.Module):
 
 if __name__ == '__main__':
     net = MultiLayerSNN()
+    optimizer = Adam(net.parameters(), lr=1e-2)
+    optimizer.zero_grad()
     inputs = torch.randn(100, 64, 16)
     set_elements_to_zero(inputs, 0.5)
     inputs = inputs.to_sparse_coo()
     outputs = net(inputs)
-    print(outputs)
+    loss = outputs.sum()
+    loss.backward()
+    optimizer.step()
+
 
 
 

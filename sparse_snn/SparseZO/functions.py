@@ -27,12 +27,12 @@ class LocalLIFLayer(torch.autograd.Function):
             state = - u_th * output + state * beta + input
             output = (state > u_th).float()
             outputs.append(output)
-            grad = torch.mean((state < torch.abs(z) * sigma + u_th).float(), dim=0) * z / (2 * sigma)
+            grad = torch.mean((state < torch.abs(z) * sigma + u_th).float() * z, dim=0) / (2 * sigma)
             grads.append(grad)
-            ctx.constant = [u_th, beta, sigma]
 
+        ctx.constant = [u_th, beta, sigma]
         outputs = torch.stack(outputs).to_sparse_coo()
-        grads = torch.stack(grads).to_sparse_coo()
+        grads = torch.flip(torch.stack(grads), (0,)).to_sparse_coo()
         ctx.save_for_backward(grads)
         return outputs
 
@@ -40,12 +40,13 @@ class LocalLIFLayer(torch.autograd.Function):
     def backward(ctx: Any, grad_outputs: Any) -> Any:
         # expect dense grad_outputs
         u_th, beta, sigma = ctx.constant
-        grads, = ctx.saved_tensors
+        grads,  = ctx.saved_tensors
         grad_states = []
-        grad_state_prev = torch.zeros_like(grad_states[0]).to_sparse_coo()  # the gradient of previous input
+        grad_state_prev = torch.zeros_like(grad_outputs[0]).to_sparse_coo()  # the gradient of previous input
+        grad_outputs_flip = torch.flip(grad_outputs, (0,))
         # a backward indexing
-        for grad_output, grad in zip(grad_outputs[::-1], grads[::-1]):
-            grad_output_new = - grad_state_prev * u_th + grad_output  # dense + dense = dense
+        for grad_output, grad in zip(grad_outputs_flip, grads):
+            grad_output_new = grad_output - grad_state_prev * u_th  # sparse + dense = dense
             grad_state_current = torch.mul(grad, grad_output_new) + grad_state_prev * beta  # sparse + sparse = sparse
             grad_states.append(grad_state_current)
             grad_state_prev = grad_state_current
