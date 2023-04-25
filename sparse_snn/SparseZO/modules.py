@@ -1,12 +1,13 @@
 import torch
 from .functions import LocalLIFLayer
 from typing import Callable, Tuple
+from .samplers import Sampler
 
 
 class LocalLIF(torch.nn.Module):
 
     def __init__(self, u_th: float, beta: float, sigma: float, sample_num: int,
-                 random_sampler: Callable[[int, torch.Size, torch.device], torch.Tensor], sample_number: int = 5):
+                 random_sampler: Sampler, sample_number: int = 5):
         """
         local FIL layer for spike sequence encoding, backward with sparse zo
 
