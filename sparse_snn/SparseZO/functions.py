@@ -23,11 +23,11 @@ class LocalLIFLayer(torch.autograd.Function):
         state, output = 0, 0
         outputs = []
         grads = []
-        for input, z in zip(inputs, z):
+        for input, z_current in zip(inputs, z):
             state = - u_th * output + state * beta + input
             output = (state > u_th).float()
             outputs.append(output)
-            grad = torch.mean((state < torch.abs(z) * sigma + u_th).float() * z, dim=0) / (2 * sigma)
+            grad = torch.mean((torch.abs(state - u_th) < torch.abs(z_current) * sigma).float() * z_current, dim=0) / (2 * sigma)
             grads.append(grad)
 
         ctx.constant = [u_th, beta, sigma]
