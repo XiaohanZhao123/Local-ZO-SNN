@@ -1,5 +1,9 @@
+import time
+
 import torch
 from typing import Any
+from matplotlib import pyplot as plt
+import numpy as np
 
 
 class InputSparseOutputDense(torch.autograd.Function):
@@ -77,6 +81,7 @@ def test_case2():
     torch.sparse.sum(z).backward()
     print(y.grad, z.grad, x.grad, x.grad.is_sparse)
 
+
 def test_case6():
     x = torch.randn((32, 16, 16))
     x.requires_grad = True
@@ -137,8 +142,68 @@ def test_case5():
 
     b = torch.randn((16))
     print('see if the auto broadcast can happen', b.unsqueeze(0).expand_as(x) + x)
-    print('see if we can sum the sparse tensor along two dims', torch.sum(x, dim=(0,1)))
+    print('see if we can sum the sparse tensor along two dims', torch.sum(x, dim=(0, 1)))
+
+
+def test_case7():
+    """
+    test if we can concat sparse coo tensors
+
+    Returns:
+
+    """
+    x = torch.randn((32, 16, 16))
+    set_elements_to_zero(x, 0.9)
+    x = x.to_sparse_coo()
+    y = torch.concat([x] * 20)
+    print(y.size(), y)
+
+
+def test_time():
+    x_shape = (2048, 2048)
+    w_shape = (2048, 2048)
+    x = torch.randn(x_shape)
+    w = torch.randn(w_shape)
+    set_elements_to_zero(x, 0.9)
+    x_sparse = x.to_sparse_coo()
+    print(x_sparse.is_coalesced())
+
+    sparse_mul_time = []
+    dense_mul_time = []
+    sparse_to_dense_time = []
+
+    for _ in range(100):
+        start = time.time()
+        y = torch.mul(x_sparse, w)
+        torch.cuda.synchronize()
+        end = time.time()
+        sparse_mul_time.append(end - start)
+
+    for _ in range(100):
+        start = time.time()
+        y = torch.mul(x, w)
+        torch.cuda.synchronize()
+        end = time.time()
+        dense_mul_time.append(end - start)
+
+    for _ in range(100):
+        start = time.time()
+        z = x_sparse.to_dense()
+        y = torch.mul(z, w)
+        torch.cuda.synchronize()
+        end = time.time()
+        sparse_to_dense_time.append(end - start)
+
+    sparse_mul_time = np.mean(sparse_mul_time)
+    dense_mul_time = np.mean(dense_mul_time)
+    sparse_to_dense_time = np.mean(sparse_to_dense_time)
+
+    plt.figure()
+    plt.title('Comparison for time consumption under 100 runs')
+    plt.bar([0, 1, 2], [sparse_mul_time, dense_mul_time, sparse_to_dense_time])
+    plt.xticks([0, 1, 3], ['Sparse Multiplication Time', 'Dense Mul Time', 'Sparse To Dense Multiplication time'])
+    plt.show()
 
 
 if __name__ == '__main__':
-    test_case6()
+    test_time()
